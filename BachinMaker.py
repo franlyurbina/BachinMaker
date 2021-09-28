@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 """
-Modified by Franly Urbina 2021
+Modified by Franly Urbina 2021, https://github.com/franlyurbina/
 Modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com 
 modified by Adam Polak 2014, polakiumengineering.org
 
@@ -398,7 +398,9 @@ class Laser_gcode(inkex.Effect):
                 self.options.directory += "\\"
             else :
                 self.options.directory += "/"
+
         print_("Checking direcrory: '%s'"%self.options.directory)
+
         if (os.path.isdir(self.options.directory)):
             if (os.path.isfile(self.options.directory+'header')):
                 f = open(self.options.directory+'header', 'r')
@@ -456,6 +458,7 @@ class Laser_gcode(inkex.Effect):
         '''
         tool = self.tools
         print_("Tool in g-code generator: " + str(tool))
+
         def c(c):
             c = [c[i] if i<len(c) else None for i in range(6)]
             if c[5] == 0 : c[5]=None
@@ -651,6 +654,7 @@ class Laser_gcode(inkex.Effect):
             print_("Z automatic scale = %s (computed according orientation points)" % self.Zauto_scale[layer])
 
         x,y = source_point[0], source_point[1]
+
         if not reverse :
             t = self.transform_matrix[layer]
         else :
@@ -695,6 +699,7 @@ class Laser_gcode(inkex.Effect):
                         active_layer_already_has_tool
                         active_layer_already_has_orientation_points
                     """
+
         if type_.lower() in re.split("[\s\n,\.]+", errors.lower()) :
             print_(s)
             inkex.errormsg(s+"\n")        
@@ -723,6 +728,7 @@ class Laser_gcode(inkex.Effect):
                         self.defs[j.get("id")] = i
                 if i.tag ==inkex.addNS("g",'svg') :
                     recursive(i)
+
         recursive(self.document.getroot())
 
  
@@ -742,6 +748,7 @@ class Laser_gcode(inkex.Effect):
         def recursive_search(g, layer, selected=False):
             items = g.getchildren()
             items.reverse()
+
             for i in items:
                 if selected:
                     self.svg.selected[i.get("id")] = i
@@ -774,13 +781,16 @@ class Laser_gcode(inkex.Effect):
         items.reverse()
         p2, p3 = [], []
         p = None
+
         for i in items:
             if i.tag == inkex.addNS("g",'svg') and i.get("gcodetools") == "Gcodetools orientation point (2 points)":
                 p2 += [i]
             if i.tag == inkex.addNS("g",'svg') and i.get("gcodetools") == "Gcodetools orientation point (3 points)":
                 p3 += [i]
+
         if len(p2)==2 : p=p2 
         elif len(p3)==3 : p=p3 
+
         if p==None : return None
         points = []
         for i in p :    
@@ -879,12 +889,16 @@ class Laser_gcode(inkex.Effect):
             
             return minimal_way
 
+
+        ################################################################################
+        ###        Laser Code
+        ################################################################################
+
+        paths = self.selected_paths
         if self.selected_paths == {} :
             paths=self.paths
 
             self.error(("No paths are selected! Trying to work on all available paths."),"warning")
-        else :
-            paths = self.selected_paths
 
 
         ################################################################################
@@ -896,26 +910,32 @@ class Laser_gcode(inkex.Effect):
         etree.SubElement( list(self.selected_paths.keys())[0] if len(self.selected_paths.keys())>0 else self.layers[0], inkex.addNS('g','svg') )
         print_(("self.layers=",self.layers))
         print_(("paths=",paths))
+
         for layer in self.layers :
             if layer in paths :
                 print_(("layer",layer))
                 p = []    
                 dxfpoints = []
+
                 for path in paths[layer] :
                     print_(str(layer))
+
                     if "d" not in path.keys() : 
                         self.error(("Warning: One or more paths dont have 'd' parameter, try to Ungroup (Ctrl+Shift+G) and Object to Path (Ctrl+Shift+C)!"),"selection_contains_objects_that_are_not_paths")
-                        continue                    
+                        continue      
+
                     csp = inkex.paths.CubicSuperPath(path.get("d"))
                     csp = self.apply_transforms(path, csp)
+                    
                     if path.get("dxfpoint") == "1":
                         tmp_curve=self.transform_csp(csp, layer)
-                        x=tmp_curve[0][0][0][0];
-                        y=tmp_curve[0][0][0][1];
+                        x=tmp_curve[0][0][0][0]
+                        y=tmp_curve[0][0][0][1]
                         print_("got dxfpoint (scaled) at (%f,%f)" % (x,y))
                         dxfpoints += [[x,y]]
                     else:
                         p += csp
+
                 dxfpoints=sort_dxfpoints(dxfpoints)
                 curve = self.parse_curve(p, layer)
                 gcode += self.generate_gcode(curve, layer, 0)
@@ -925,6 +945,7 @@ class Laser_gcode(inkex.Effect):
 
     def orientation(self, layer=None) :
         print_("entering orientations")
+        
         if layer == None :
             layer = self.current_layer if self.current_layer is not None else self.document.getroot()
         if layer in self.orientation_points:
@@ -932,12 +953,11 @@ class Laser_gcode(inkex.Effect):
         
         orientation_group = etree.SubElement(layer, inkex.addNS('g','svg'), {"gcodetools":"Gcodetools orientation group"})
 
-        # translate == ['0', '-917.7043']
-        if layer.get("transform") != None :
-            translate = layer.get("transform").replace("translate(", "").replace(")", "").split(",")
-        else :
-            translate = [0,0]
+        translate = [0,0]
 
+        if layer.get("transform") != None : # translate == ['0', '-917.7043']
+            translate = layer.get("transform").replace("translate(", "").replace(")", "").split(",")
+        
         # doc height in pixels (38 mm == 134.64566px)
         doc_height = self.svg.unittouu(self.document.getroot().xpath('@height', namespaces=inkex.NSS)[0])
 
@@ -948,9 +968,8 @@ class Laser_gcode(inkex.Effect):
         print_("Document height: " + str(doc_height))
             
         if self.options.unit == "G21 (All units in mm)" : 
-            points = [[0.,0.,0.],[100.,0.,0.],[0.,100.,0.]]
-            #orientation_scale = 3.5433070660
-            orientation_scale = 1;
+            points = [[0.,0.,0.],[100.,0.,0.],[0.,100.,0.]] 
+            orientation_scale = 1
             print_("orientation_scale < 0 ===> switching to mm units=%0.10f"%orientation_scale )
 
         elif self.options.unit == "G20 (All units in inches)" :
@@ -961,6 +980,7 @@ class Laser_gcode(inkex.Effect):
         points = points[:2]
 
         print_(("using orientation scale",orientation_scale,"i=",points))
+
         for i in points :
             # X == Correct!
             # si == x,y coordinate in px
@@ -968,12 +988,14 @@ class Laser_gcode(inkex.Effect):
             # if layer have any tranform it will be in translate so lets add that
             si = [i[0]*orientation_scale, (i[1]*orientation_scale)+float(translate[1])]
             g = etree.SubElement(orientation_group, inkex.addNS('g','svg'), {'gcodetools': "Gcodetools orientation point (2 points)"})
+            
             etree.SubElement(    g, inkex.addNS('path','svg'), 
                 {
                     'style':    "stroke:none;fill:#000000;",     
                     'd':'m %s,%s 2.9375,-6.343750000001 0.8125,1.90625 6.843748640396,-6.84374864039 0,0 0.6875,0.6875 -6.84375,6.84375 1.90625,0.812500000001 z z' % (si[0], -si[1]+doc_height),
                     'gcodetools': "Gcodetools orientation point arrow"
                 })
+            
             t = etree.SubElement(    g, inkex.addNS('text','svg'), 
                 {
                     'style':    "font-size:10px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;",
@@ -982,6 +1004,7 @@ class Laser_gcode(inkex.Effect):
                     'y':    str(-si[1]-10+doc_height),
                     'gcodetools': "Gcodetools orientation point text"
                 })
+            
             t.text = "(%s; %s; %s)" % (i[0],i[1],i[2])
 
 
@@ -997,6 +1020,7 @@ class Laser_gcode(inkex.Effect):
         options.doc_root = self.document.getroot()
         # define print_ function 
         global print_
+
         if self.options.log_create_log :
             try :
                 if os.path.isfile(self.options.log_filename) : os.remove(self.options.log_filename)
@@ -1007,7 +1031,9 @@ class Laser_gcode(inkex.Effect):
             except :
                 print_  = lambda *x : None 
         else : print_  = lambda *x : None 
+        
         self.get_info()
+        
         if self.orientation_points == {} :
             self.error(("Orientation points have not been defined! A default set of orientation points has been automatically added."),"warning")
             self.orientation( self.layers[min(0,len(self.layers)-1)] )        
