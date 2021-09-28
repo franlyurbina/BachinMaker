@@ -1,9 +1,6 @@
 #!/usr/bin/env python 
 """
-<<<<<<< Updated upstream
-=======
 Modified by Franly Urbina 2021, https://github.com/franlyurbina/
->>>>>>> Stashed changes
 Modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com 
 modified by Adam Polak 2014, polakiumengineering.org
 
