@@ -900,10 +900,6 @@ class Laser_gcode(inkex.Effect):
 
             self.error(("No paths are selected! Trying to work on all available paths."),"warning")
 
-
-        ################################################################################
-        ###        Laser Code
-        ################################################################################
         self.check_dir() 
         gcode = ""
 
