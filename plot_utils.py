@@ -31,17 +31,11 @@
 # SOFTWARE.
 
 from math import sqrt
-import cspsubdiv
-from bezmisc import *
+import cspsubdiv 
 
 def version():
-	return "0.3"	# Version number for this document
+	return "0.4"	# Version number for this document
 
-def distance( x, y ):
-	'''
-	Pythagorean theorem!
-	'''
-	return sqrt( x * x + y * y )
 
 def parseLengthWithUnits( str ):
 	'''
@@ -105,28 +99,7 @@ def getLength( altself, name, default ):
 	else:
 		# No width specified; assume the default value
 		return float( default )
-
-def getLengthInches( altself, name ):
-	'''
-	Get the <svg> attribute with name "name" and default value "default"
-	Parse the attribute into a value and associated units.  Then, accept
-	units of inches ('in'), millimeters ('mm'), or centimeters ('cm')
-	'''
-	str = altself.document.getroot().get( name )
-	if str:
-		v, u = parseLengthWithUnits( str )
-		if not v:
-			# Couldn't parse the value
-			return None
-		elif  u == 'in' :
-			return v
-		elif u == 'mm':
-			return (float( v ) / 25.4)
-		elif u == 'cm':
-			return (float( v ) / 2.54)
-		else:
-			# Unsupported units
-			return None
+ 
 
 def subdivideCubicPath( sp, flat, i=1 ):
 	"""
@@ -160,67 +133,3 @@ def subdivideCubicPath( sp, flat, i=1 ):
 		p = [one[2], one[3], two[1]]
 		sp[i:1] = [p]
 
-
-def checkLimits( value, lowerBound, upperBound ):
-	#Check machine size limit; truncate at edges
-	if (value > upperBound):
-		return upperBound, True
-	if (value < lowerBound):
-		return lowerBound, True	
-	return value, False	
-	
-	
-def vFinal_Vi_A_Dx(Vinitial,Acceleration,DeltaX):
-	'''
-	Kinematic calculation: Final velocity with constant linear acceleration. 
-	
-	Calculate and return the (real) final velocity, given an initial velocity, 
-		acceleration rate, and distance interval.
-
-	Uses the kinematic equation Vf^2 = 2 a D_x + Vi^2, where 
-			Vf is the final velocity, 
-			a is the acceleration rate, 
-			D_x (delta x) is the distance interval, and
-			Vi is the initial velocity.	
-			
-	We are looking at the positive root only-- if the argument of the sqrt
-		is less than zero, return -1, to indicate a failure.		
-	'''		
-	FinalVSquared = ( 2 * Acceleration * DeltaX ) +	( Vinitial * Vinitial )
-	if (FinalVSquared > 0):
-		return sqrt(FinalVSquared)	
-	else:
-		return -1		
-
-def vInitial_VF_A_Dx(VFinal,Acceleration,DeltaX):
-	'''
-	Kinematic calculation: Maximum allowed initial velocity to arrive at distance X
-	with specified final velocity, and given maximum linear acceleration. 
-	
-	Calculate and return the (real) initial velocity, given an final velocity, 
-		acceleration rate, and distance interval.
-
-	Uses the kinematic equation Vi^2 = Vf^2 - 2 a D_x , where 
-			Vf is the final velocity, 
-			a is the acceleration rate, 
-			D_x (delta x) is the distance interval, and
-			Vi is the initial velocity.	
-			
-	We are looking at the positive root only-- if the argument of the sqrt
-		is less than zero, return -1, to indicate a failure.	
-	'''		
-	IntialVSquared = ( VFinal * VFinal )  - ( 2 * Acceleration * DeltaX )
-	if (IntialVSquared > 0):
-		return sqrt(IntialVSquared)	
-	else:
-		return -1		
-
-
-def dotProductXY( inputVectorFirst, inputVectorSecond):
-	temp = inputVectorFirst[0] * inputVectorSecond[0] + inputVectorFirst[1] * inputVectorSecond[1]
-	if (temp > 1):
-		return 1
-	elif (temp < -1):
-		return -1
-	else:
-		return temp 	
