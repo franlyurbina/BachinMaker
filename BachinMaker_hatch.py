@@ -1725,6 +1725,4 @@ class Eggbot_Hatch( inkex.Effect ):
 			return False
 
 if __name__ == '__main__':
-
-	e = Eggbot_Hatch()
-	e.run()
+	Eggbot_Hatch().run()
