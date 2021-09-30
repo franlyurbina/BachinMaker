@@ -127,7 +127,7 @@ def print_(*arg):
     '''
     f = open(options.log_filename,"a")
     for s in arg :
-        s = str(unicode(s).encode('unicode_escape'))+" "
+        s = str((s))+" "
         f.write( s )
     f.write("\n")
     f.close()
@@ -148,17 +148,18 @@ def biarc(sp1, sp2, z1, z2, depth=0):
     '''
 
     def biarc_split(sp1,sp2, z1, z2, depth): 
-        if depth<options.biarc_max_split_depth:
+        if depth < options.biarc_max_split_depth:
             sp1,sp2,sp3 = gcodetools.csp_split(sp1,sp2)
             l1, l2 = gcodetools.cspseglength(sp1,sp2), gcodetools.cspseglength(sp2,sp3)
             if l1+l2 == 0 : zm = z1
             else : zm = z1+(z2-z1)*l1/(l1+l2)
-            return biarc(sp1,sp2,z1,zm,depth+1)+biarc(sp2,sp3,zm,z2,depth+1)
+            return biarc(sp1,sp2,z1,zm,depth+1) + biarc(sp2,sp3,zm,z2,depth+1)
         else: return [ [sp1[1],'line', 0, 0, sp2[1], [z1,z2]] ]
  
     P0, P4 = P(sp1[1]), P(sp2[1])
     TS, TE, v = (P(sp1[2])-P0), -(P(sp2[0])-P4), P0 - P4
     tsa, tea, va = TS.angle(), TE.angle(), v.angle()
+
     if TE.mag()<straight_distance_tolerance and TS.mag()<straight_distance_tolerance:    
         # Both tangents are zerro - line straight
         return [ [sp1[1],'line', 0, 0, sp2[1], [z1,z2]] ]
@@ -170,8 +171,10 @@ def biarc(sp1, sp2, z1, z2, depth=0):
         r = 1/( TE.mag()/v.mag()*2 )
     else:    
         r=TS.mag()/TE.mag()
+
     TS, TE = TS.unit(), TE.unit()
     tang_are_parallel = ((tsa-tea)%math.pi<straight_tolerance or math.pi-(tsa-tea)%math.pi<straight_tolerance )
+
     if ( tang_are_parallel  and 
                 ((v.mag()<straight_distance_tolerance or TE.mag()<straight_distance_tolerance or TS.mag()<straight_distance_tolerance) or
                     1-abs(TS*v/(TS.mag()*v.mag()))<straight_tolerance)    ):
@@ -182,9 +185,12 @@ def biarc(sp1, sp2, z1, z2, depth=0):
         return [ [sp1[1],'line', 0, 0, sp2[1], [z1,z2]] ]
 
     c,b,a = v*v, 2*v*(r*TS+TE), 2*r*(TS*TE-1)
+
     if v.mag()==0:
         return biarc_split(sp1, sp2, z1, z2, depth)
-    asmall, bsmall, csmall = abs(a)<10**-10,abs(b)<10**-10,abs(c)<10**-10 
+
+    asmall, bsmall, csmall = abs(a)<10**-10,abs(b)<10**-10,abs(c)<10**-10
+
     if         asmall and b!=0:    beta = -c/b
     elif     csmall and a!=0:    beta = -b/a 
     elif not asmall:     
@@ -197,6 +203,8 @@ def biarc(sp1, sp2, z1, z2, depth=0):
         beta = max(beta1, beta2)
     elif    asmall and bsmall:    
         return biarc_split(sp1, sp2, z1, z2, depth)
+
+
     alpha = beta * r
     ab = alpha + beta 
     P1 = P0 + alpha * TS
@@ -277,34 +285,38 @@ class Laser_gcode(inkex.Effect):
         add_argument("--active-tab",                      action="store", type=str,          dest="active_tab",                          default="",                             help="Defines which tab is active")
         add_argument("--biarc-max-split-depth",           action="store", type=int,          dest="biarc_max_split_depth",               default="4",                            help="Defines maximum depth of splitting while approximating using biarcs.")                
  
-    def parse_curve(self, p, layer, w = None, f = None):
-            c = []
-            if len(p)==0 : 
-                return []
-            p = self.transform_csp(p, layer) 
- 
-            ### Sort to reduce Rapid distance    
-            k = [i for i in range(1, len(p), 1)] 
-            keys = [0] 
-            while len(k)>0: 
-                end = p[keys[-1]][-1][1]
-                dist = ()
-                for i in range(0, len(k)):
-                    start = p[k[i]][0][1]  
-                    dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,i)    ,   dist )
 
-                keys.append(k[dist[1]]) 
-                del k[dist[1]]
- 
-            for k in keys:
-                subpath = p[k]
-                c += [ [    [subpath[0][1][0],subpath[0][1][1]]   , 'move', 0, 0] ]
-                for i in range(1,len(subpath)):
-                    sp1 = [  [subpath[i-1][j][0], subpath[i-1][j][1]] for j in range(3)]
-                    sp2 = [  [subpath[i  ][j][0], subpath[i  ][j][1]] for j in range(3)]
-                    c += biarc(sp1,sp2,0,0) if w==None else biarc(sp1,sp2,-f(w[k][i-1]),-f(w[k][i]))
-                c += [ [ [subpath[-1][1][0],subpath[-1][1][1]]  ,'end',0,0] ]
-                print_("Curve: " + str(c))
+    def parse_curve(self, p, layer):
+            c = []
+
+            if len(p) > 0:  ### Sort to reduce Rapid distance    
+                p = self.transform_csp(p, layer)
+    
+                k = [i for i in range(1, len(p), 1)]
+                keys = [0]
+
+                while len(k) > 0: 
+                    end = p[keys[-1]][-1][1]
+                    dist = ()
+
+                    for i in range(0, len(k)):
+                        start = p[k[i]][0][1]
+                        dist = max(   ( -( ( end[0]-start[0])**2 + (end[1]-start[1])**2 ) ,i),   dist )
+
+                    keys.append(k[dist[1]])
+                    del k[dist[1]]
+    
+                for k in keys:
+                    subpath = p[k]
+                    c += [ [    [subpath[0][1][0],subpath[0][1][1]]   , 'move', 0, 0] ]
+
+                    for i in range(1,len(subpath)):
+                        sp1 = [  [subpath[i-1][j][0], subpath[i-1][j][1]] for j in range(3)]
+                        sp2 = [  [subpath[i  ][j][0], subpath[i  ][j][1]] for j in range(3)]
+
+                        c += biarc(sp1,sp2,0,0)
+
+                    c += [ [ [subpath[-1][1][0],subpath[-1][1][1]]  ,'end',0,0] ]
 
             return c
 
@@ -550,7 +562,7 @@ class Laser_gcode(inkex.Effect):
         return trans 
         
 
-    def apply_transforms(self,g,csp):
+    def apply_transforms(self, g, csp):
         """
         Multiply coordinates with the new dimensions
         """
@@ -568,7 +580,7 @@ class Laser_gcode(inkex.Effect):
             count = 0
 
             for indexC, coordinateC in enumerate(coordinates):
-                if coordinateC == 'C' or coordinateC == 'M' or coordinateC == 'L' or coordinateC == 'Z':
+                if coordinateC in 'CMLZ':
                     mlz.append(coordinateC)
                     value = -1
                     if coordinateC == 'C':
@@ -749,26 +761,33 @@ class Laser_gcode(inkex.Effect):
             items = g.getchildren()
             items.reverse()
 
-            for i in items:
+            for i in items: 
+
                 if selected:
                     self.svg.selected[i.get("id")] = i
+
                 if i.tag == inkex.addNS("g",'svg') and i.get(inkex.addNS('groupmode','inkscape')) == 'layer':
                     self.layers += [i]
                     recursive_search(i,i)
+
                 elif i.get('gcodetools') == "Gcodetools orientation group" :
                     points = self.get_orientation_points(i)
+
                     if points != None :
                         self.orientation_points[layer] = self.orientation_points[layer]+[points[:]] if layer in self.orientation_points else [points[:]]
                         print_("Found orientation points in '%s' layer: %s" % (layer.get(inkex.addNS('label','inkscape')), points))
                     else :
                         self.error(("Warning! Found bad orientation points in '%s' layer. Resulting Gcode could be corrupt!") % layer.get(inkex.addNS('label','inkscape')), "bad_orientation_points_in_some_layers")
+                
                 elif i.tag == inkex.addNS('path','svg'):
                     if "gcodetools"  not in i.keys() :
                         self.paths[layer] = self.paths[layer] + [i] if layer in self.paths else [i]  
                         if i.get("id") in self.svg.selected :
-                            self.selected_paths[layer] = self.selected_paths[layer] + [i] if layer in self.selected_paths else [i]  
+                            self.selected_paths[layer] = self.selected_paths[layer] + [i] if layer in self.selected_paths else [i]
+
                 elif i.tag == inkex.addNS("g",'svg'):
                     recursive_search(i,layer, (i.get("id") in self.svg.selected) )
+
                 elif i.get("id") in self.svg.selected :
                     self.error(("This extension works with Paths and Dynamic Offsets and groups of them only! All other objects will be ignored!\nSolution 1: press Path->Object to path or Shift+Ctrl+C.\nSolution 2: Path->Dynamic offset or Ctrl+J.\nSolution 3: export all contours to PostScript level 2 (File->Save As->.ps) and File->Import this file."),"selection_contains_objects_that_are_not_paths")
                 
@@ -807,103 +826,21 @@ class Laser_gcode(inkex.Effect):
 
 
     def laser(self) :
-
-        def get_boundaries(points):
-            minx,miny,maxx,maxy=None,None,None,None
-            out=[[],[],[],[]]
-            for p in points:
-                if minx==p[0]:
-                    out[0]+=[p]
-                if minx==None or p[0]<minx: 
-                    minx=p[0]
-                    out[0]=[p]
-
-                if miny==p[1]:
-                    out[1]+=[p]
-                if miny==None or p[1]<miny: 
-                    miny=p[1]
-                    out[1]=[p]
-
-                if maxx==p[0]:
-                    out[2]+=[p]
-                if maxx==None or p[0]>maxx: 
-                    maxx=p[0]
-                    out[2]=[p]
-
-                if maxy==p[1]:
-                    out[3]+=[p]
-                if maxy==None or p[1]>maxy: 
-                    maxy=p[1]
-                    out[3]=[p]
-            return out
-
-
-        def remove_duplicates(points):
-            i=0        
-            out=[]
-            for p in points:
-                for j in range(i,len(points)):
-                    if p==points[j]: points[j]=[None,None]    
-                if p!=[None,None]: out+=[p]
-            i+=1
-            return(out)
-    
-    
-        def get_way_len(points):
-            l=0
-            for i in range(1,len(points)):
-                l+=math.sqrt((points[i][0]-points[i-1][0])**2 + (points[i][1]-points[i-1][1])**2)
-            return l
-
-    
-        def sort_dxfpoints(points):
-            points=remove_duplicates(points)
-
-            ways=[# l=0, d=1, r=2, u=3
-             [3,0], # ul
-             [3,2], # ur
-             [1,0], # dl
-             [1,2], # dr
-             [0,3], # lu
-             [0,1], # ld
-             [2,3], # ru
-             [2,1], # rd
-            ]
-
-            minimal_way=[]
-            minimal_len=None
-            minimal_way_type=None
-
-            for w in ways:
-                tpoints=points[:]
-                cw=[]
-                for j in range(0,len(points)):
-                    p=get_boundaries(get_boundaries(tpoints)[w[0]])[w[1]]
-                    tpoints.remove(p[0])
-                    cw+=p
-                curlen = get_way_len(cw)
-                if minimal_len==None or curlen < minimal_len: 
-                    minimal_len=curlen
-                    minimal_way=cw
-                    minimal_way_type=w
-            
-            return minimal_way
-
-
+ 
         ################################################################################
         ###        Laser Code
         ################################################################################
 
         paths = self.selected_paths
+        
         if self.selected_paths == {} :
             paths=self.paths
-
             self.error(("No paths are selected! Trying to work on all available paths."),"warning")
 
         self.check_dir() 
         gcode = ""
 
-        etree.SubElement( list(self.selected_paths.keys())[0] if len(self.selected_paths.keys())>0 else self.layers[0], inkex.addNS('g','svg') )
+        etree.SubElement( list(self.selected_paths.keys())[0] if len(self.selected_paths.keys()) >0 else self.layers[0], inkex.addNS('g','svg') )
         print_(("self.layers=",self.layers))
         print_(("paths=",paths))
 
@@ -914,25 +851,24 @@ class Laser_gcode(inkex.Effect):
                 dxfpoints = []
 
                 for path in paths[layer] :
-                    print_(str(layer))
+                    print_("print layer: ", str(layer))
 
                     if "d" not in path.keys() : 
                         self.error(("Warning: One or more paths dont have 'd' parameter, try to Ungroup (Ctrl+Shift+G) and Object to Path (Ctrl+Shift+C)!"),"selection_contains_objects_that_are_not_paths")
                         continue      
 
-                    csp = inkex.paths.CubicSuperPath(path.get("d"))
-                    csp = self.apply_transforms(path, csp)
+                    csp = inkex.paths.CubicSuperPath(path.get("d")) 
+                    csp = self.apply_transforms(path, csp) 
                     
                     if path.get("dxfpoint") == "1":
-                        tmp_curve=self.transform_csp(csp, layer)
-                        x=tmp_curve[0][0][0][0]
-                        y=tmp_curve[0][0][0][1]
+                        tmp_curve = self.transform_csp(csp, layer)
+                        x = tmp_curve[0][0][0][0]
+                        y = tmp_curve[0][0][0][1]
                         print_("got dxfpoint (scaled) at (%f,%f)" % (x,y))
                         dxfpoints += [[x,y]]
                     else:
                         p += csp
 
-                dxfpoints=sort_dxfpoints(dxfpoints)
                 curve = self.parse_curve(p, layer)
                 gcode += self.generate_gcode(curve, layer, 0)
             
@@ -1016,6 +952,11 @@ class Laser_gcode(inkex.Effect):
         options.doc_root = self.document.getroot()
         # define print_ function 
         global print_
+
+        # TODO init
+        # self.options.log_create_log = True
+        # self.options.log_filename = "D:\output\log.txt"
+        # TODO end
 
         if self.options.log_create_log :
             try :
