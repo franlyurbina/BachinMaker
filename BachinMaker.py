@@ -28,6 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 import inkex
+from inkex import Transform
 import gcodetools
 from lxml import etree
  
@@ -562,44 +563,25 @@ class Laser_gcode(inkex.Effect):
         return trans 
         
 
-    def apply_transforms(self, g, csp):
+    def apply_transforms(self, g, csp, reverse=False):
         """
         Multiply coordinates with the new dimensions
         """
-        dimensions = self.get_transforms(g)
-        if dimensions:
-            redimension = []
-            for dimension in dimensions:
-                for coordinate in dimension:
-                    if coordinate != 0:
-                        redimension.append(coordinate)
+        
+        trans = self.get_transforms(g)
+        if trans:
+            if not reverse: 
+                for comp in csp:
+                    for ctl in comp:
+                        for pt in ctl:
+                            pt[0], pt[1] = Transform(trans).apply_to_point(pt)
 
-            coordinates = str(csp).split()
-            mlz = []
-            isCurveto = False
-            count = 0
-
-            for indexC, coordinateC in enumerate(coordinates):
-                if coordinateC in 'CMLZ':
-                    mlz.append(coordinateC)
-                    value = -1
-                    if coordinateC == 'C':
-                        isCurveto = True
-                        count = 0
-                    continue
-
-                if isCurveto and value == (len(redimension)-1):
-                    count += 1
-                    value = -1
-                    if count == 3:
-                        isCurveto = False
- 
-                value += 1
-                mlz.append(str(float(redimension[value]) * float(coordinateC)))
-                
-            csp = ' '.join(mlz)
-
-        return inkex.paths.CubicSuperPath(csp)
+            else: 
+                for comp in csp:
+                    for ctl in comp:
+                        for pt in ctl:
+                            pt[0], pt[1] = Transform(self.reverse_transform(trans)).apply_to_point(pt)
+        return csp 
 
 
     def transform(self, source_point, layer, reverse=False):
@@ -826,7 +808,7 @@ class Laser_gcode(inkex.Effect):
 
 
     def laser(self) :
- 
+        
         ################################################################################
         ###        Laser Code
         ################################################################################
@@ -938,7 +920,7 @@ class Laser_gcode(inkex.Effect):
                 })
             
             t.text = "(%s; %s; %s)" % (i[0],i[1],i[2])
-
+  
 
     def effect(self) :
         global options
