@@ -780,31 +780,37 @@ class Laser_gcode(inkex.Effect):
     def get_orientation_points(self,g):
         items = g.getchildren()
         items.reverse()
-        p2, p3 = [], []
+        p2 = []
+        p3 = []
         p = None
-
         for i in items:
-            if i.tag == inkex.addNS("g",'svg') and i.get("gcodetools") == "Gcodetools orientation point (2 points)":
-                p2 += [i]
-            if i.tag == inkex.addNS("g",'svg') and i.get("gcodetools") == "Gcodetools orientation point (3 points)":
-                p3 += [i]
-
-        if len(p2)==2 : p=p2 
-        elif len(p3)==3 : p=p3 
-
-        if p==None : return None
+            if isinstance(i, inkex.Group):
+                if i.get("gcodetools") == "Gcodetools orientation point (2 points)":
+                    p2 += [i]
+                if i.get("gcodetools") == "Gcodetools orientation point (3 points)":
+                    p3 += [i]
+        if len(p2) == 2:
+            p = p2
+        elif len(p3) == 3:
+            p = p3
+        if p is None:
+            return None
         points = []
-        for i in p :    
-            point = [[],[]]    
-            for  node in i :
+        for i in p:
+            point = [[], []]
+            for node in i:
                 if node.get('gcodetools') == "Gcodetools orientation point arrow":
-                    point[0] = self.apply_transforms(node,inkex.paths.CubicSuperPath(node.get("d")))[0][0][1]
+                    csp = node.path.transform(node.composed_transform()).to_superpath()
+                    point[0] = csp[0][0][1]
                 if node.get('gcodetools') == "Gcodetools orientation point text":
-                    r = re.match(r'(?i)\s*\(\s*(-?\s*\d*(?:,|\.)*\d*)\s*;\s*(-?\s*\d*(?:,|\.)*\d*)\s*;\s*(-?\s*\d*(?:,|\.)*\d*)\s*\)\s*',node.text)
-                    point[1] = [float(r.group(1)),float(r.group(2)),float(r.group(3))]
-            if point[0]!=[] and point[1]!=[]:    points += [point]
-        if len(points)==len(p2)==2 or len(points)==len(p3)==3 : return points
-        else : return None
+                    r = re.match(r'(?i)\s*\(\s*(-?\s*\d*(?:,|\.)*\d*)\s*;\s*(-?\s*\d*(?:,|\.)*\d*)\s*;\s*(-?\s*\d*(?:,|\.)*\d*)\s*\)\s*', node.get_text())
+                    point[1] = [float(r.group(1)), float(r.group(2)), float(r.group(3))]
+            if point[0] != [] and point[1] != []:
+                points += [point]
+        if len(points) == len(p2) == 2 or len(points) == len(p3) == 3:
+            return points
+        else:
+            return None
 
 
     def laser(self) :
